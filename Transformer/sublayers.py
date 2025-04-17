@@ -23,9 +23,15 @@ class MultiHeadAttention(nn.Module):
     def attention(self, q, k, v, d_k, mask=None, dropout=None):
         scores = torch.matmul(q, k.transpose(-2, -1)) / math.sqrt(d_k)
 
-        # 掩盖那些为了补全长度而增加的单元，使其通过Softmax计算后为0
+        # 处理的过程中，由于句子长度不一样 通常会将句子填充到相同的长度
+        # 判断是否提供了掩码
         if mask is not None:
+            # 为掩码添加一个维度
+            # scores: [批次大小, 头数, 序列长度, 序列长度]
+            # 原始mask: [批次大小, 序列长度]
+            # 现mask: [批次大小, 1, 序列长度] 允许掩码在广播时应用到所有注意力头
             mask = mask.unsqueeze(1)
+            # 将掩码为0的位置在分数矩阵中填充为-1e9 使其经过softmax处理后约为0
             scores = scores.masked_fill(mask == 0, -1e9)
 
         scores = F.softmax(scores, dim=-1)
